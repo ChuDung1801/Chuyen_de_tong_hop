@@ -1,0 +1,32 @@
+/* TV5 — Sprint 5 recommendation UI. */
+.sprint5-recommendations { display: grid; gap: 1rem; }
+.sprint5-recommendations .section-heading { align-items: flex-start; }
+.sprint5-recommendations .description { color: #68756d; line-height: 1.65; max-width: 760px; }
+.recommendation-controls { display: grid; grid-template-columns: minmax(200px, 1fr) 160px auto; align-items: end; gap: 0 16px; }
+.recommendation-controls label { margin: 0 0 12px; }
+.recommendation-controls small { grid-column: 1 / -1; }
+.recommendation-list { display: grid; gap: 12px; }
+.recommendation-card { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 15px; margin: 0; }
+.recommendation-rank { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: #e5f3eb; color: #17664f; font-weight: 800; }
+.recommendation-main { min-width: 0; }
+.recommendation-title { display: flex; justify-content: space-between; gap: 16px; }
+.recommendation-title h3 { margin: 0 0 6px; font-family: Manrope, sans-serif; }
+.recommendation-title p { margin: 0; color: #68756d; font-size: 12px; }
+.recommendation-score { text-align: right; min-width: 92px; }
+.recommendation-score strong { display: block; color: #17664f; font-size: 22px; font-family: Manrope, sans-serif; }
+.recommendation-score span { display: block; font-size: 11px; color: #68756d; }
+.score-track { height: 7px; border-radius: 999px; overflow: hidden; background: #edf1ed; margin: 15px 0; }
+.score-track span { display: block; height: 100%; background: #278064; border-radius: inherit; }
+.skill-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.skill-columns b { font-size: 12px; color: #43554b; }
+.skill-columns p { color: #68756d; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.recommendation-main details { border-top: 1px solid #edf1ed; padding-top: 12px; font-size: 12px; color: #43554b; }
+.recommendation-main summary { cursor: pointer; font-weight: 700; }
+.recommendation-main details p { line-height: 1.65; color: #68756d; }
+@media(max-width: 720px) {
+  .recommendation-controls { grid-template-columns: 1fr; }
+  .recommendation-controls small { grid-column: auto; }
+  .recommendation-card { grid-template-columns: 1fr; }
+  .recommendation-title { align-items: flex-start; }
+  .skill-columns { grid-template-columns: 1fr; gap: 0; }
+}
