@@ -1,0 +1,90 @@
+import { FormEvent, useEffect, useState } from 'react'
+import { api, API_BASE, AuthUser, clearSession, getSession, setSession } from './api'
+import Sprint4Workflow from './Sprint4Workflow'
+import Sprint5Recommendations from './Sprint5Recommendations'
+import AdminDashboard from './AdminDashboard'
+import './sprint5.css'
+
+type Job = { id: number; companyId: number | null; title: string; description: string; location: string; employmentType: string; requiredSkillsCsv?: string; createdAtUtc: string; isPublished: boolean }
+type Profile = { id: number; email: string; fullName: string; phone?: string; location?: string; summary?: string; yearsExperience?: number; skillsCsv?: string; position?: string }
+type Company = { id: number; name: string; website?: string; industry?: string; description?: string; location?: string }
+type Cv = { id: number; originalFileName: string; contentType: string; sizeBytes: number; uploadedAtUtc: string }
+type View = 'jobs' | 'profile' | 'company' | 'create-job' | 'saved' | 'sprint4' | 'sprint5' | 'admin'
+
+// ============== 
+// TV4 — Giao diện Sprint 2: auth, hồ sơ, CV, company/job và trạng thái lỗi/loading.
+// ==============
+export default function App() {
+  const [session, setUser] = useState(getSession())
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [view, setView] = useState<View>('jobs')
+  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking')
+  const [jobs, setJobs] = useState<Job[]>([]); const [page, setPage] = useState(1); const [totalPages, setTotalPages] = useState(1); const [locationFilter, setLocationFilter] = useState(''); const [typeFilter, setTypeFilter] = useState(''); const [skillFilter, setSkillFilter] = useState(''); const [savedJobs, setSavedJobs] = useState<{jobId:number;title:string;location:string;employmentType:string;savedAtUtc:string}[]>([]); const [companies, setCompanies] = useState<Company[]>([]); const [cvs, setCvs] = useState<Cv[]>([])
+  const [profile, setProfile] = useState<Profile>({ id: 0, email: '', fullName: '' })
+  const [search, setSearch] = useState(''); const [message, setMessage] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false)
+
+  async function loadJobs(term = search, nextPage = page) { try { const q = new URLSearchParams(); if(term.trim()) q.set('search',term.trim()); if(locationFilter.trim()) q.set('location',locationFilter.trim()); if(typeFilter) q.set('employmentType',typeFilter); if(skillFilter.trim()) q.set('skill',skillFilter.trim()); q.set('page',String(nextPage)); q.set('pageSize','6'); const result = await api<{items:Job[];page:number;totalPages:number}>(`/api/jobs?${q.toString()}`); setJobs(result.items); setPage(result.page); setTotalPages(Math.max(1,result.totalPages)); setError('') } catch (e) { setError((e as Error).message) } }
+  async function loadSavedJobs() { try { setSavedJobs(await api<typeof savedJobs>('/api/saved-jobs')) } catch(e) { setError((e as Error).message) } }
+  async function toggleSaved(jobId:number) { try { const exists=savedJobs.some(x=>x.jobId===jobId); if(exists) { await api<void>(`/api/saved-jobs/${jobId}`,{method:'DELETE'}); setSavedJobs(old=>old.filter(x=>x.jobId!==jobId)) } else { await api(`/api/saved-jobs/${jobId}`,{method:'POST'}); await loadSavedJobs() } setMessage(exists?'Đã bỏ lưu công việc.':'Đã lưu công việc.') } catch(e) { setError((e as Error).message) } }
+  async function loadPrivateData() {
+    if (!session) return
+    try {
+      const p = await api<Profile>('/api/profiles/me'); setProfile(p)
+      if (session.role === 'Candidate') setCvs(await api<Cv[]>('/api/cvs/my'))
+      if (session.role === 'Recruiter' || session.role === 'Admin') setCompanies(await api<Company[]>('/api/companies/my'))
+    } catch (e) { setError((e as Error).message) }
+  }
+  useEffect(() => { fetch(`${API_BASE}/health`).then(r => { if (!r.ok) throw new Error(); setApiStatus('online') }).catch(() => setApiStatus('offline')); void loadJobs() }, [])
+  useEffect(() => { void loadPrivateData(); if(session?.role === 'Candidate') void loadSavedJobs() }, [session?.userId])
+
+  async function submitAuth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true); setError(''); setMessage('')
+    const form = new FormData(event.currentTarget)
+    try {
+      const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register'
+      const payload = authMode === 'login'
+        ? { email: String(form.get('email')), password: String(form.get('password')) }
+        : { email: String(form.get('email')), password: String(form.get('password')), role: String(form.get('role')), fullName: String(form.get('fullName')) }
+      const user = await api<AuthUser>(endpoint, { method: 'POST', body: JSON.stringify(payload) })
+      setSession(user); setUser({ userId: user.userId, email: user.email, role: user.role }); setMessage('Đăng nhập thành công.'); setView('profile')
+    } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
+  }
+  function logout() { clearSession(); setUser(null); setProfile({ id: 0, email: '', fullName: '' }); setCvs([]); setCompanies([]); setView('jobs'); setMessage('Bạn đã đăng xuất.') }
+
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!session) return; setBusy(true); setError(''); setMessage('')
+    const f = new FormData(event.currentTarget)
+    const common = { fullName: String(f.get('fullName')), phone: String(f.get('phone') || ''), ...(session.role === 'Candidate' ? { location: String(f.get('location') || ''), summary: String(f.get('summary') || ''), yearsExperience: Number(f.get('yearsExperience') || 0), skillsCsv: String(f.get('skillsCsv') || '') } : { position: String(f.get('position') || '') }) }
+    try { const endpoint = session.role === 'Candidate' ? '/api/profiles/me/candidate' : '/api/profiles/me/recruiter'; setProfile(await api<Profile>(endpoint, { method: 'PUT', body: JSON.stringify(common) })); setMessage('Đã lưu hồ sơ.') } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
+  }
+  async function uploadCv(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const form = event.currentTarget; const file = new FormData(form).get('file') as File
+    if (!file || !file.size) { setError('Hãy chọn tệp CV.'); return }
+    const data = new FormData(); data.append('file', file); setBusy(true); setError(''); setMessage('')
+    try { const cv = await api<Cv>('/api/cvs', { method: 'POST', body: data }); setCvs(old => [cv, ...old]); form.reset(); setMessage('Tải CV thành công.') } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
+  }
+  async function createCompany(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const f = new FormData(event.currentTarget); setBusy(true); setError('')
+    try { const c = await api<Company>('/api/companies', { method: 'POST', body: JSON.stringify({ name: f.get('name'), website: f.get('website'), industry: f.get('industry'), description: f.get('description'), location: f.get('location') }) }); setCompanies(old => [...old, c]); setMessage('Đã tạo công ty.') } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
+  }
+  async function createJob(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const f = new FormData(event.currentTarget); setBusy(true); setError('')
+    try { await api<Job>('/api/jobs', { method: 'POST', body: JSON.stringify({ companyId: Number(f.get('companyId')) || null, title: f.get('title'), description: f.get('description'), location: f.get('location'), employmentType: f.get('employmentType'), requiredSkillsCsv: f.get('requiredSkillsCsv'), isPublished: true }) }); setMessage('Đã tạo tin tuyển dụng.'); setView('jobs'); await loadJobs() } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
+  }
+
+  return <main className="page">
+    <nav className="nav"><div className="brand"><span className="brand-mark">AI</span> Recruit </div><span className={`status ${apiStatus}`}>API: {apiStatus === 'checking' ? 'Đang kiểm tra' : apiStatus === 'online' ? 'Đã kết nối' : 'Ngoại tuyến'}</span>{session ? <div className="nav-user"><span>{session.email} · {session.role}</span><button className="secondary-button" onClick={logout}>Đăng xuất</button></div> : null}</nav>
+    {message && <p className="notice success" role="status">{message}</p>}{error && <p className="notice" role="alert">{error}</p>}
+    {!session ? <section className="auth-layout"><div className="hero"><p className="eyebrow">AI RECRUITMENT PLATFORM</p><h1>Tìm việc và phát triển <span>sự nghiệp</span>.</h1><p className="intro">Đăng nhập để quản lý hồ sơ, CV hoặc đăng tin tuyển dụng. AI chỉ cung cấp thông tin tham khảo.</p></div><form className="panel form-panel" onSubmit={submitAuth}><div className="tabs"><button type="button" className={authMode === 'login' ? 'active' : ''} onClick={() => setAuthMode('login')}>Đăng nhập</button><button type="button" className={authMode === 'register' ? 'active' : ''} onClick={() => setAuthMode('register')}>Đăng ký</button></div>{authMode === 'register' && <label>Họ và tên<input name="fullName" required minLength={2} /></label>}<label>Email<input name="email" type="email" required autoComplete="email" /></label><label>Mật khẩu<input name="password" type="password" required minLength={10} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} /></label>{authMode === 'register' && <label>Loại tài khoản<select name="role"><option value="Candidate">Ứng viên</option><option value="Recruiter">Nhà tuyển dụng</option></select></label>}<button className="primary-button wide" disabled={busy}>{busy ? 'Đang xử lý…' : authMode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}</button><small>Mật khẩu tối thiểu 10 ký tự, có chữ và số. Không thể tự đăng ký vai trò Admin.</small></form></section> : <><div className="app-layout"><aside className="sidebar"><p className="eyebrow">DANH MỤC</p>{session.role === 'Admin' && <button className={view === 'admin' ? 'side-link active' : 'side-link'} onClick={() => setView('admin')}>Dashboard quản trị</button>}<button className={view === 'jobs' ? 'side-link active' : 'side-link'} onClick={() => {setView('jobs'); void loadJobs(search,1)}}>Việc làm</button>{session.role === 'Candidate' && <button className={view === 'saved' ? 'side-link active' : 'side-link'} onClick={() => {setView('saved'); void loadSavedJobs()}}>Việc làm đã lưu</button>}{session.role === 'Candidate' && <button className={view === 'sprint5' ? 'side-link active' : 'side-link'} onClick={() => setView('sprint5')}>Gợi ý việc làm AI</button>}<button className={view === 'profile' ? 'side-link active' : 'side-link'} onClick={() => setView('profile')}>Hồ sơ của tôi</button><button className={view === 'sprint4' ? 'side-link active' : 'side-link'} onClick={() => setView('sprint4')}>Ứng tuyển & phỏng vấn</button>{session.role === 'Candidate' && <span className="side-note">Tải CV trong mục hồ sơ</span>}{(session.role === 'Recruiter' || session.role === 'Admin') && <><button className={view === 'company' ? 'side-link active' : 'side-link'} onClick={() => setView('company')}>Công ty</button><button className={view === 'create-job' ? 'side-link active' : 'side-link'} onClick={() => setView('create-job')}>Đăng tin</button></>}</aside><section className="content">
+      {view === 'jobs' && <><div className="section-heading"><div><p className="eyebrow">CƠ HỘI NGHỀ NGHIỆP</p><h2>Công việc mới nhất</h2></div><form className="search-form filters" onSubmit={e => { e.preventDefault(); void loadJobs(search,1) }}><input aria-label="Tìm công việc" value={search} onChange={e => setSearch(e.target.value)} placeholder="Vị trí hoặc mô tả…"/><input aria-label="Lọc địa điểm" value={locationFilter} onChange={e=>setLocationFilter(e.target.value)} placeholder="Địa điểm"/><select aria-label="Hình thức làm việc" value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}><option value="">Mọi hình thức</option><option value="FullTime">Full-time</option><option value="PartTime">Part-time</option><option value="Contract">Contract</option><option value="Internship">Internship</option><option value="Remote">Remote</option></select><input aria-label="Kỹ năng" value={skillFilter} onChange={e=>setSkillFilter(e.target.value)} placeholder="Kỹ năng"/><button className="secondary-button">Lọc</button></form></div>{jobs.length === 0 ? <div className="empty"><h3>Không tìm thấy công việc</h3><p>Thử bỏ bớt điều kiện lọc hoặc quay lại sau.</p></div> : jobs.map(job => <article className="job-card" key={job.id}><div className="job-icon">↗</div><div className="job-info"><h3>{job.title}</h3><p>{job.location || 'Chưa xác định địa điểm'} · {job.employmentType}</p><p className="description">{job.description}</p>{job.requiredSkillsCsv && <p className="skills">Kỹ năng: {job.requiredSkillsCsv}</p>}</div>{session.role === 'Candidate' && <button className="secondary-button" onClick={()=>void toggleSaved(job.id)}>{savedJobs.some(x=>x.jobId===job.id)?'Đã lưu':'Lưu việc'}</button>}<span className="job-label">Đang tuyển</span></article>)}<div className="pagination"><button className="secondary-button" disabled={page<=1} onClick={()=>void loadJobs(search,page-1)}>Trang trước</button><span>Trang {page} / {totalPages}</span><button className="secondary-button" disabled={page>=totalPages} onClick={()=>void loadJobs(search,page+1)}>Trang sau</button></div></>}
+      {view === 'admin' && session?.role === 'Admin' && <AdminDashboard />}
+      {view === 'sprint4' && session && <Sprint4Workflow role={session.role} />}
+      {view === 'sprint5' && session?.role === 'Candidate' && <Sprint5Recommendations />}
+      {view === 'saved' && <><p className="eyebrow">DÀNH CHO BẠN</p><h2>Việc làm đã lưu</h2>{savedJobs.length===0?<div className="empty"><p>Bạn chưa lưu công việc nào.</p></div>:savedJobs.map(job=><article className="job-card" key={job.jobId}><div className="job-info"><h3>{job.title}</h3><p>{job.location||'Chưa xác định địa điểm'} · {job.employmentType}</p><small>Đã lưu {new Date(job.savedAtUtc).toLocaleDateString('vi-VN')}</small></div><button className="secondary-button" onClick={()=>void toggleSaved(job.jobId)}>Bỏ lưu</button></article>)}</>}
+      {view === 'profile' && <><p className="eyebrow">TÀI KHOẢN</p><h2>Hồ sơ của tôi</h2>{session.role === 'Admin' ? <div className="panel">Tài khoản Admin không có hồ sơ cá nhân trong Sprint 2.</div> : <form key={`${view}-${profile.id}-${profile.fullName}`} className="panel form-grid" onSubmit={saveProfile}><label>Họ và tên<input name="fullName" required defaultValue={profile.fullName}/></label><label>Email<input value={session.email} disabled readOnly/></label><label>Số điện thoại<input name="phone" defaultValue={profile.phone || ''}/></label>{session.role === 'Candidate' ? <><label>Địa điểm<input name="location" defaultValue={profile.location || ''}/></label><label>Số năm kinh nghiệm<input name="yearsExperience" type="number" min="0" max="70" defaultValue={profile.yearsExperience ?? 0}/></label><label>Kỹ năng (phân cách bằng dấu phẩy)<input name="skillsCsv" defaultValue={profile.skillsCsv || ''}/></label><label className="full">Giới thiệu<textarea name="summary" rows={4} defaultValue={profile.summary || ''}/></label></> : <label>Chức vụ<input name="position" defaultValue={profile.position || ''}/></label>}<button className="primary-button" disabled={busy}>Lưu hồ sơ</button></form>}{session.role === 'Candidate' && <div className="panel"><h3>CV của tôi</h3><form className="upload-row" onSubmit={uploadCv}><input type="file" name="file" accept=".pdf,.docx" required/><button className="primary-button" disabled={busy}>Tải CV lên</button></form><small>PDF/DOCX · tối đa 5 MB. PDF scan có thể chưa trích xuất được văn bản.</small>{cvs.map(cv => <div className="cv-row" key={cv.id}><span>{cv.originalFileName}</span><small>{(cv.sizeBytes / 1024).toFixed(0)} KB · {new Date(cv.uploadedAtUtc).toLocaleDateString('vi-VN')}</small></div>)}</div>}</>}
+      {view === 'company' && <><p className="eyebrow">NHÀ TUYỂN DỤNG</p><h2>Công ty của tôi</h2><form className="panel form-grid" onSubmit={createCompany}><label>Tên công ty<input name="name" required/></label><label>Website<input name="website" type="url" placeholder="https://..."/></label><label>Ngành nghề<input name="industry"/></label><label>Địa điểm<input name="location"/></label><label className="full">Mô tả<textarea name="description" rows={3}/></label><button className="primary-button" disabled={busy}>Tạo công ty</button></form><div className="company-list">{companies.map(c => <article className="panel" key={c.id}><h3>{c.name}</h3><p>{c.industry || 'Chưa cập nhật ngành nghề'} · {c.location || 'Chưa cập nhật địa điểm'}</p>{c.website && <a href={c.website} target="_blank" rel="noreferrer">Website</a>}</article>)}</div></>}
+      {view === 'create-job' && <><p className="eyebrow">TUYỂN DỤNG</p><h2>Đăng tin tuyển dụng</h2><form className="panel form-grid" onSubmit={createJob}><label className="full">Tiêu đề<input name="title" required maxLength={200}/></label><label>Công ty<select name="companyId"><option value="">Chưa gắn công ty</option>{companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Hình thức<select name="employmentType"><option>FullTime</option><option>PartTime</option><option>Contract</option><option>Internship</option><option>Remote</option></select></label><label>Địa điểm<input name="location" maxLength={200}/></label><label>Kỹ năng yêu cầu<input name="requiredSkillsCsv" placeholder="C#, SQL Server, React"/></label><label className="full">Mô tả công việc<textarea name="description" rows={7} required maxLength={8000}/></label><button className="primary-button" disabled={busy}>Xuất bản tin</button></form></>}
+    </section></div></>}
+    <footer><span>AI Recruit </span><span>AI hỗ trợ tham khảo · Quyết định tuyển dụng thuộc về con người</span></footer>
+  </main>
+}
