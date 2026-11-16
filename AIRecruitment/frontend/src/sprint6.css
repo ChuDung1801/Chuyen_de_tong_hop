@@ -1,0 +1,20 @@
+.admin6-dashboard { display: grid; gap: 18px; }
+.admin6-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.admin6-heading h2 { margin: 4px 0 6px; }
+.admin6-subtitle, .admin6-muted, .admin6-footnote { color: var(--muted, #64748b); font-size: 0.92rem; }
+.admin6-stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.admin6-stat { display: grid; gap: 7px; min-width: 0; }
+.admin6-stat > span { color: var(--muted, #64748b); font-size: 0.9rem; }
+.admin6-stat > strong { font-size: clamp(1.7rem, 3vw, 2.35rem); line-height: 1.05; letter-spacing: -0.04em; }
+.admin6-stat > small { color: var(--muted, #64748b); line-height: 1.4; }
+.admin6-lower-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.admin6-panel h3 { margin-top: 0; }
+.admin6-status-list, .admin6-model-list { display: grid; gap: 10px; }
+.admin6-status-row, .admin6-model-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--border, #e2e8f0); padding: 9px 0; }
+.admin6-status-row:last-child, .admin6-model-row:last-child { border-bottom: 0; }
+.admin6-status-row strong { font-variant-numeric: tabular-nums; }
+.admin6-model-row > div { display: grid; gap: 3px; min-width: 0; }
+.admin6-model-row > div span, .admin6-model-row small { color: var(--muted, #64748b); font-size: 0.85rem; overflow-wrap: anywhere; }
+.admin6-footnote { margin: 0; }
+@media (max-width: 920px) { .admin6-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .admin6-heading { flex-direction: column; } .admin6-stat-grid, .admin6-lower-grid { grid-template-columns: minmax(0, 1fr); } }

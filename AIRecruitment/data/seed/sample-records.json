@@ -1,0 +1,31 @@
+{
+  "note": "Dữ liệu minh họa cho demo Sprint 2; không tự import vào database. Hãy tạo tài khoản qua API/UI để có UserId và khóa ngoại hợp lệ.",
+  "candidateProfile": {
+    "fullName": "Nguyen An",
+    "phone": "0900000000",
+    "location": "Ha Noi",
+    "summary": "Sinh viên CNTT quan tâm backend và phát triển web.",
+    "yearsExperience": 1,
+    "skillsCsv": "C#, ASP.NET Core, SQL Server, Git"
+  },
+  "company": {
+    "name": "Example Technology Company",
+    "website": "https://example.com",
+    "industry": "Software",
+    "description": "Dữ liệu công ty giả lập để kiểm thử.",
+    "location": "Ha Noi"
+  },
+  "job": {
+    "title": "Junior Backend Developer (Demo)",
+    "description": "Hỗ trợ xây dựng REST API, viết truy vấn SQL và kiểm thử chức năng.",
+    "location": "Ha Noi / Hybrid",
+    "employmentType": "FullTime",
+    "requiredSkillsCsv": "C#, ASP.NET Core, SQL Server, Git",
+    "isPublished": true
+  },
+  "cvUpload": {
+    "allowedExtensions": [".pdf", ".doc", ".docx"],
+    "maxSizeBytes": 5242880,
+    "note": "Sử dụng CV giả lập do nhóm tự tạo; không commit CV chứa dữ liệu cá nhân thật."
+  }
+}

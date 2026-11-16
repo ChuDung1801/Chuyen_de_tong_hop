@@ -1,0 +1,136 @@
+{
+  "report_version": "sprint5-model-comparison-v1",
+  "dataset_path": "C:\\Users\\DELL\\Documents\\GitHub\\Chuyen_de_tong_hop\\AIRecruitment\\ai-service\\data\\processed\\cv_job_pairs.csv",
+  "rows_used": 120,
+  "split": {
+    "train": 72,
+    "validation": 24,
+    "test": 24,
+    "random_state": 42,
+    "group_split_by_cv_id": true,
+    "groups": {
+      "train": [
+        "CV-SYN-002",
+        "CV-SYN-003",
+        "CV-SYN-004",
+        "CV-SYN-005",
+        "CV-SYN-006",
+        "CV-SYN-007",
+        "CV-SYN-008",
+        "CV-SYN-013",
+        "CV-SYN-015",
+        "CV-SYN-017",
+        "CV-SYN-019",
+        "CV-SYN-020",
+        "CV-SYN-022",
+        "CV-SYN-025",
+        "CV-SYN-026",
+        "CV-SYN-027",
+        "CV-SYN-029",
+        "CV-SYN-030"
+      ],
+      "validation": [
+        "CV-SYN-001",
+        "CV-SYN-011",
+        "CV-SYN-012",
+        "CV-SYN-014",
+        "CV-SYN-021",
+        "CV-SYN-023"
+      ],
+      "test": [
+        "CV-SYN-009",
+        "CV-SYN-010",
+        "CV-SYN-016",
+        "CV-SYN-018",
+        "CV-SYN-024",
+        "CV-SYN-028"
+      ]
+    }
+  },
+  "features": [
+    "skill_overlap",
+    "experience_match",
+    "title_similarity",
+    "description_similarity"
+  ],
+  "selection_rule": "Validation F1, then Recall, then Precision; test split is not used to choose the model.",
+  "selected_model_by_validation": "logistic-regression",
+  "validation_metrics": {
+    "logistic-regression": {
+      "rows": 24,
+      "accuracy": 0.9583,
+      "precision": 1.0,
+      "recall": 0.875,
+      "f1": 0.9333,
+      "confusion_matrix_labels_0_1": [
+        [
+          16,
+          0
+        ],
+        [
+          1,
+          7
+        ]
+      ],
+      "roc_auc": 1.0
+    },
+    "random-forest": {
+      "rows": 24,
+      "accuracy": 0.9167,
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1": 0.8571,
+      "confusion_matrix_labels_0_1": [
+        [
+          16,
+          0
+        ],
+        [
+          2,
+          6
+        ]
+      ],
+      "roc_auc": 1.0
+    }
+  },
+  "test_metrics_for_reporting_only": {
+    "logistic-regression": {
+      "rows": 24,
+      "accuracy": 0.9583,
+      "precision": 0.8571,
+      "recall": 1.0,
+      "f1": 0.9231,
+      "confusion_matrix_labels_0_1": [
+        [
+          17,
+          1
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "roc_auc": 1.0
+    },
+    "random-forest": {
+      "rows": 24,
+      "accuracy": 0.8333,
+      "precision": 0.6667,
+      "recall": 0.6667,
+      "f1": 0.6667,
+      "confusion_matrix_labels_0_1": [
+        [
+          16,
+          2
+        ],
+        [
+          2,
+          4
+        ]
+      ],
+      "roc_auc": 0.9352
+    }
+  },
+  "caveat": "Dataset hiện có các mã SYN và có tính chất dữ liệu minh họa/tổng hợp. Các metric kiểm tra pipeline, không chứng minh hiệu năng trên CV thực tế.",
+  "human_review": "Điểm matching là thông tin tham khảo; không tự động quyết định tuyển dụng."
+}
